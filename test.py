@@ -8,15 +8,18 @@ class CellAutomata:
     def __init__(self):
         self.last_interaction = datetime.now()
         self._filled_cells = []
-        self.rows = 100
-        self.cols = 100
+        self.rows = 50
+        self.cols = 50
 
-        self.myGrid = PyGrid.PGGrid(self.rows,self.cols,800,600)
+        caption = "Game Of Life: 'p' - pause, 'q' - quit, create cells with mouse"        
+        self.myGrid = PyGrid.PGGrid(self.rows,self.cols,800,600,window_caption=caption)
         self.myGrid.tile_padding=0
         self.myGrid.nogrid = False
-        self.myGrid.draw_border = False
 
+        self.simulation_speed = 100
+        self.myGrid.draw_border = False
         self.pause_step = True
+        self.last_clicked = None
 
     def remove_cell(self, pos):
         if pos in self._filled_cells:
@@ -73,11 +76,9 @@ class CellAutomata:
                 new_cells.append((newbie, True))
         self.update(new_cells)
 
-
     def handleInteraction(self):
-        clicked_tile = self.myGrid.get_clicked_tile()
         now = datetime.now()
-        cooldown_time = self.last_interaction + timedelta(milliseconds=500)
+        cooldown_time = self.last_interaction + timedelta(milliseconds=200)
         # pause step
         if self.myGrid.key_pressed == 112: 
             if now > cooldown_time:
@@ -89,18 +90,37 @@ class CellAutomata:
                     self.myGrid.draw_border = False
                     self.pause_step = True
 
+        #minus
+        if self.myGrid.key_pressed == 1073741911:
+            if now > cooldown_time:
+                self.last_interaction = datetime.now()
+                if self.simulation_speed - 10 > 1:
+                    self.simulation_speed -= 10
+        #plus
+        if self.myGrid.key_pressed == 1073741910:
+            if now > cooldown_time:
+                self.last_interaction = datetime.now()
+                if self.simulation_speed + 10 < 500:
+                    self.simulation_speed += 10
 
-        if clicked_tile:
-            filled = self.myGrid.is_filled(clicked_tile[0],clicked_tile[1])
-            if filled:
-                if now > cooldown_time:
-                    self.remove_cell(clicked_tile)
-                    self.last_interaction = datetime.now()
-            else:
-                if now > cooldown_time:
-                    self.add_cell(clicked_tile)
-                    self.last_interaction = datetime.now()
-                    
+        #c
+        if self.myGrid.key_pressed == 99:
+            if now > cooldown_time:
+                self._filled_cells = []
+                self.myGrid.clear_tiles()
+
+        if self.myGrid.mouse_pressed:
+            clicked_tile = self.myGrid.get_clicked_tile()
+            if clicked_tile:
+                filled = self.myGrid.is_filled(clicked_tile[0],clicked_tile[1])
+                if clicked_tile != self.last_clicked:
+                    self.last_clicked = clicked_tile
+                    if filled:
+                        self.remove_cell(clicked_tile)
+                    else:
+                        self.add_cell(clicked_tile)
+        else:
+            self.last_clicked = None
 
     def run(self):
         running = True
@@ -108,11 +128,11 @@ class CellAutomata:
         while running:
             running = self.myGrid.update_drawing()
             self.handleInteraction()
-            if count == 10:
+            if count > self.simulation_speed:
                 if not self.pause_step:
                     self.step()
                 count = 0
-            #time.sleep(0.001)
+            #time.sleep(0.1)
             count += 1
 
 if __name__ == "__main__":
